@@ -1,24 +1,25 @@
-version: "3.7"
-
-x-defaults:
-  network: &network
-    networks:
-      - net
+version: "3"
 
 services:
   php:
-    image: lamp
+    image: lampn
     ports:
       - 80:80
       - 443:443
     volumes:
-      - workspace:/var/www
+      - ecommerce:/var/www/ecommerce
     configs:
       - source: apache-vhosts
         target: /etc/apache2/sites-available/000-default.conf
       - source: php-ini
         target: /usr/local/etc/php/conf.d/local.ini
-    <<: *network
+    command: >
+      sh -c "cd /var/www/ecommerce &&
+             composer install &&
+             php artisan migrate:refresh --seed &&
+             php artisan storage:link &&
+             npm install &&
+             npm run prod"
 
   db:
     image: mysql:latest
@@ -26,17 +27,13 @@ services:
       - 3306:3306
     environment:
       - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db_pwd
+      - MYSQL_DATABASE=ecommerce
       - MYSQL_USER=dbuser
       - MYSQL_PASSWORD=dbpass
     volumes:
       - data:/var/lib/mysql
     secrets:
       - db_pwd
-    <<: *network
-
-
-networks:
-  net:
 
 secrets:
   db_pwd:
@@ -48,8 +45,8 @@ configs:
   php-ini:
     file: ./php/local.ini
 
-volumes: 
-  workspace:
-     external: true 
+volumes:
+  ecommerce:
+    external: true
   data:
-     external: true
+    external: true
